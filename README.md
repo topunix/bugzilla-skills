@@ -43,4 +43,4 @@ See LICENSE.
 ## Not affiliated
 
 This is an independent project and is not affiliated with or endorsed by the
-Bugzilla project or Mozilla.# bugzilla-skills
+Bugzilla project or Mozilla
