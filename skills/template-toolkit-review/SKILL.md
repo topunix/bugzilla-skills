@@ -12,23 +12,42 @@ and bugzilla.readthedocs.io — see `reference/` for full quotes.
 
 ## `FILTER html` discipline
 
-Any value interpolated into HTML output that isn't already known-safe
-markup must go through the `html` filter. Per bugzilla.readthedocs.io's
-Template Customisation docs: "you should take particular care about is the
-need to properly HTML filter data that has been passed into the template.
-If the data can possibly contain special HTML characters such as `<`, they
-need to be converted to entity form. You use the `html` filter in the
-Template Toolkit to do this." Concretely, the filter resolves to
-`Bugzilla::Util::html_quote` (registered in `Bugzilla::Template`).
+Any value interpolated into output that isn't already known-safe markup must
+go through a filter matching its output context. Per the Bugzilla docs,
+*5.4. Templates*:
 
-Review checklist for any `[% ... %]` interpolation into HTML context:
+> "One thing you should take particular care about is the need to properly
+> HTML filter data that has been passed into the template. This means that
+> if the data can possibly contain special HTML characters such as `<`, and
+> the data was not intended to be HTML, they need to be converted to entity
+> form, i.e. `&lt;`.  You use the `html` filter in the Template Toolkit to
+> do this (or the `uri` filter to encode special characters in URLs).  If
+> you forget, you may open up your installation to cross-site scripting
+> attacks."
+
+Concretely, `html` resolves to `Bugzilla::Util::html_quote` (registered in
+`Bugzilla::Template`). Note the two filters the docs name for two different
+contexts: **`html` for HTML text, `uri` for URLs** — entity encoding is not
+URL encoding, and using the first where the second belongs leaves the value
+wrong and potentially unsafe.
+
+Review checklist for any `[% ... %]` interpolation:
 - Plain user-controlled value (summary, comment text, product name, etc.)
-  → must carry `FILTER html`, e.g. `[% product.name FILTER html %]`.
-- Value going into a `href`/`src`/URL context often needs a second layer —
-  templates in the wild combine filters, e.g. `FILTER html_light FILTER js`
-  for a value used inside both an HTML attribute and a JS string context.
-  A single filter is not automatically wrong, but check *which* filter
-  matches the actual output context, not just that one is present.
+  into HTML text → must carry `FILTER html`, e.g.
+  `[% product.name FILTER html %]`.
+- Value going into a `href`/`src`/URL context → needs URL encoding, not just
+  HTML escaping. The docs name `uri` (a Template Toolkit built-in);
+  Bugzilla additionally ships `url_quote`
+  (`Bugzilla::Util::url_quote`), which is in `t/004template.t`'s
+  known-filter list.
+- A value inside a URL *inside* an HTML attribute is in two contexts at
+  once, which is why templates in the wild layer filters, e.g.
+  `FILTER html_light FILTER js` for a value spanning HTML and JS string
+  context. A single filter is not automatically wrong — check *which*
+  filter matches the actual output context, not just that one is present.
+- Note the docs' qualifier "and the data was not intended to be HTML": the
+  rule targets data that must not be able to become markup. Content
+  deliberately carrying HTML is what `html_light` is for.
 - `t/004template.t` maintains an explicit allow-list of filters that are
   considered defined/legitimate (`html_linebreak`, `js`, `base64`,
   `url_quote`, `css_class_quote`, `xml`, `quoteUrls`, `bug_link`, `csv`,
@@ -75,22 +94,27 @@ When reviewing a new hook point:
 
 ## Template cache invalidation
 
-Per bugzilla.readthedocs.io: `data/template` is where Template Toolkit
-writes compiled (Perl) versions of the templates, functioning as `COMPILE_DIR`.
-The docs are explicit: **"Do not directly edit the files in this
-directory, or all your changes will be lost the next time Template Toolkit
-recompiles the templates."** `Bugzilla::Template`'s `precompile_templates`
-function ("compiles all of Bugzilla's templates in every language") is
-invoked from `checksetup.pl` for exactly this purpose.
+The docs give a direct instruction: **"You should run `./checksetup.pl`
+after editing any templates. Failure to do so may mean either that your
+changes are not picked up, or that the permissions on the edited files are
+wrong so the webserver can't read them."** `Bugzilla::Template`'s
+`precompile_templates` ("compiles all of Bugzilla's templates in every
+language") is the function `checksetup.pl` calls to do it.
 
-If a `.tmpl` edit isn't showing up:
-- Check whether the compiled cache in `data/template` is stale rather than
-  assuming the edit itself is wrong — a stale compile cache is a much more
-  common cause of "my template change isn't showing up" than a logic bug.
-- Never hand-edit anything under `data/template` — it's regenerated and
-  will discard the edit.
-- Re-running `checksetup.pl` (which calls `precompile_templates`) or
-  clearing `data/template` forces a recompile.
+Compiled templates live in `data/template`, and the docs warn: **"*Do not*
+directly edit the files in this directory, or all your changes will be lost
+the next time Template Toolkit recompiles the templates."**
+
+If a `.tmpl` edit isn't showing up, the docs describe **two** failure modes
+from skipping `checksetup.pl`, and they look different:
+- **Changes not picked up** — the edit is fine, but the stale compiled
+  version is still being served. Presents as "my change did nothing."
+- **Wrong file permissions** — the webserver can't read the edited file.
+  Presents as an error or blank output, so it's easily misread as a syntax
+  problem in the new template code.
+
+Check both before concluding the template logic is wrong. Never hand-edit
+anything under `data/template` — it's regenerated and the edit is discarded.
 
 See `reference/filters-and-hooks.md` and `reference/caching.md` for full
 source quotes.

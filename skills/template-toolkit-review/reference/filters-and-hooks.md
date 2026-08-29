@@ -2,24 +2,65 @@
 
 ## `FILTER html`
 
-Source: bugzilla.readthedocs.io, *Integrating with Bugzilla → Templates*
-(rendered at `https://bugzilla.readthedocs.io/en/latest/integrating/templates.html`,
-also present in the Harmony-specific docs at
-`https://bugzilla.readthedocs.io/projects/harmony/en/latest/integrating/templates.html`):
+Source: Bugzilla documentation, *5.4. Templates* (Integrating with Bugzilla),
+rendered at
+`https://bugzilla.readthedocs.io/en/latest/integrating/templates.html` and
+generated from
+[`docs/en/rst/integrating/templates.rst`](https://github.com/bugzilla/harmony/blob/main/docs/en/rst/integrating/templates.rst)
+in [`bugzilla/harmony`](https://github.com/bugzilla/harmony) (github.com).
+Quoted from that `.rst` source, with reStructuredText inline literals
+(``` `` ```) rendered as Markdown code formatting:
 
 > "One thing you should take particular care about is the need to properly
-> HTML filter data that has been passed into the template. If the data can
-> possibly contain special HTML characters such as `<`, they need to be
-> converted to entity form. You use the `html` filter in the Template
-> Toolkit to do this."
+> HTML filter data that has been passed into the template. This means that
+> if the data can possibly contain special HTML characters such as `<`, and
+> the data was not intended to be HTML, they need to be converted to entity
+> form, i.e. `&lt;`.  You use the `html` filter in the Template Toolkit to
+> do this (or the `uri` filter to encode special characters in URLs).  If
+> you forget, you may open up your installation to cross-site scripting
+> attacks."
+
+Two things in that sentence are easy to lose and both matter:
+
+- The qualifier **"and the data was not intended to be HTML"** — the rule is
+  not "filter everything," it's that data not meant to be markup must not be
+  able to become markup. Content deliberately carrying HTML is the case
+  `html_light` exists for.
+- The parenthetical naming **`uri`** as the filter for URL contexts. HTML
+  entity encoding is not URL encoding; `html` is the wrong tool for a value
+  being interpolated into a URL.
 
 Source: [`Bugzilla/Template.pm`](https://github.com/bugzilla/harmony/blob/main/Bugzilla/Template.pm)
-in [`bugzilla/harmony`](https://github.com/bugzilla/harmony) (github.com)
-registers the filter as:
+in `bugzilla/harmony` registers the `html` filter as:
 
 ```perl
 html => \&Bugzilla::Util::html_quote,
 ```
+
+## URL-context filters
+
+The docs name `uri` for URL encoding. Scope note on what is and isn't
+verified here:
+
+- `uri` is a **stock Template Toolkit filter**, not one Bugzilla defines —
+  it does not appear as a registered key in `Bugzilla/Template.pm`'s filter
+  set, and the docs reference it as a Template Toolkit facility.
+- `url_quote` is Bugzilla's own URL-encoding routine
+  ([`Bugzilla::Util::url_quote`](https://github.com/bugzilla/harmony/blob/main/Bugzilla/Util.pm),
+  percent-encoding everything outside `[a-zA-Z0-9_\-.]`), and appears in
+  `t/004template.t`'s list of known-defined filters, so it is legitimate in
+  templates.
+- `css_class_quote` is documented in `Bugzilla/Template.pm` by an adjacent
+  comment as "similar to url_quote but used a \ instead of a % as prefix.
+  In addition it replaces a ' ' by a '_'." — it is for CSS class names, not
+  a general URL filter.
+
+In review, the question is whether the filter matches the **output context**,
+not merely whether some filter is present: `html` for HTML text, a
+URL-encoding filter for values placed into URLs, `js` for values landing in
+JavaScript string context. A value interpolated into an `href` typically sits
+in two contexts at once (URL inside an HTML attribute), which is why layered
+filters appear in the real templates.
 
 ## Filter usage examples
 
