@@ -38,17 +38,22 @@ When triaging:
   `musthavemilestoneonaccept` enabled — check before flagging a triage as
   incomplete over a missing milestone.
 
-Resolution meanings when closing: `FIXED`, `INVALID` ("not a bug as
-described"), `WONTFIX` ("valid bug, will not be fixed"), `DUPLICATE`,
-`WORKSFORME`, `MOVED`. See `reference/status-and-resolution.md` for
-definitions and sources.
+Resolutions shipped by default are `FIXED`, `INVALID`, `WONTFIX`,
+`DUPLICATE`, and `WORKSFORME` (plus the empty value an open bug carries) —
+the set `Bugzilla::DB::ENUM_DEFAULTS` seeds at install. `MOVED` is **not** a
+Harmony default, though older releases and many long-lived installations
+carry it. Resolutions are admin-configurable and the Bugzilla docs
+deliberately don't fix a canonical list, so confirm against the actual
+installation before asserting a resolution exists. See
+`reference/status-and-resolution.md` for the sourced list and caveats.
 
 ## Dependency trees (Depends On / Blocks)
 
-"Depends On" and "Blocks" are inverse views of the same relationship — a bug
-that depends on others "cannot be fixed unless other bugs are fixed"; a bug
-that blocks others "stops other bugs being fixed"
-(bugzilla.readthedocs.io, *Understanding a Bug*). In code this is the
+"Depends On" and "Blocks" are inverse views of the same relationship. The
+docs define both directions in one sentence: "If this bug cannot be fixed
+unless other bugs are fixed (depends on), or this bug stops other bugs being
+fixed (blocks), their numbers are recorded here." (*2.3. Understanding a
+Bug*). In code this is the
 `dependencies` entry of `Bugzilla::Bug::BUG_RELATIONS` (`dependson` /
 `blocked` fields); Harmony also tracks a separate `regressions` relation
 (`regressed_by` / `regresses`) — don't conflate the two when reading a bug's
@@ -61,8 +66,9 @@ check: a bug cannot depend on something that (transitively) already depends
 on it.
 
 **"Blocker" is not the same field as "Blocks".** Severity `blocker` is a
-per-bug field value meaning "application unusable"
-(bugzilla.readthedocs.io, *Understanding a Bug*), independent of whether the
+per-bug field value; the docs describe the scale as running "from blocker
+("application unusable") to trivial ("minor cosmetic issue")" (*2.3.
+Understanding a Bug*), independent of whether the
 bug structurally blocks any other bug. A bug can be severity=blocker with an
 empty Blocks list, and a bug with a long Blocks list can be severity=normal.
 Judge "is this a blocker" on severity/impact; judge "what does this block"

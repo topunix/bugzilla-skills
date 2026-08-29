@@ -47,37 +47,79 @@ The same method also:
 
 ## Resolution values
 
-Source: bugzilla.readthedocs.io / Bugzilla project documentation on closed
-bug resolutions (consistent across the Bugzilla 5.x documentation set):
+**The Bugzilla documentation does not define the resolution values.**
+`docs/en/rst/using/understanding.rst` says of Status and Resolution: "The
+different possible values for Status and Resolution on your installation
+should be documented in the context-sensitive help for those items." So
+there is no doc page to cite for a canonical list — it is installation-
+specific by design.
 
-- **FIXED** — a fix has been checked in.
-- **INVALID** — the problem described is not a bug.
-- **WONTFIX** — the problem is a real bug, but will not be fixed.
-- **DUPLICATE** — the problem is a duplicate of an existing bug report
-  (requires a target bug id).
-- **WORKSFORME** — the bug could not be reproduced with the information
-  given.
-- **MOVED** — the bug was moved to another bug tracker.
+What can be cited precisely is the set Bugzilla *ships* and seeds into a
+fresh database. Source: `ENUM_DEFAULTS` in
+[`Bugzilla/DB.pm`](https://github.com/bugzilla/harmony/blob/main/Bugzilla/DB.pm)
+(github.com/bugzilla/harmony), which `bz_enum_initial_values` returns and
+`bz_populate_enum_tables` writes into the enum tables at install time:
 
-Older Bugzilla installs additionally shipped `LATER`, `REMIND`, and
-`NOTABUG`/`NOTOURBUG`/`INCOMPLETE` variants as local customizations; these
-are not guaranteed present on a default 5.0+/Harmony install and are not
-asserted here as defaults.
+```perl
+resolution => ["", "FIXED", "INVALID", "WONTFIX", "DUPLICATE", "WORKSFORME"],
+```
+
+That is the complete shipped default set: five named resolutions plus the
+empty string (an open bug carries no resolution). For comparison, the same
+constant seeds:
+
+```perl
+bug_status =>
+  ["UNCONFIRMED", "CONFIRMED", "IN_PROGRESS", "RESOLVED", "VERIFIED"],
+bug_severity =>
+  ['blocker', 'critical', 'major', 'normal', 'minor', 'trivial', '--'],
+```
+
+Commonly understood meanings of the five, which are *not* quoted from a
+Bugzilla doc page and are given here as description rather than citation:
+FIXED (a fix has been checked in), INVALID (the problem described is not a
+bug), WONTFIX (a real bug that will not be fixed), DUPLICATE (a duplicate of
+an existing report; requires a target bug id — see
+`reference/dependencies-and-duplicates.md`), WORKSFORME (could not be
+reproduced with the information given).
+
+Two cautions for triage:
+
+- **`MOVED` is not a Harmony default.** It is absent from `ENUM_DEFAULTS`.
+  Older Bugzilla releases and many long-lived installations carry it, along
+  with values like `LATER` and `REMIND` (both visible in a legacy chart-data
+  migration in `Bugzilla/Install/DB.pm`), and sites frequently add their own
+  such as `NOTABUG`/`NOTOURBUG`/`INCOMPLETE`. None of these are guaranteed
+  on a default 5.0+/Harmony install.
+- Because resolutions are admin-configurable, confirm against the actual
+  installation before asserting that a given resolution exists or what it
+  means locally.
 
 ## Severity vs. dependency "Blocks"
 
-Source: bugzilla.readthedocs.io, *Using Bugzilla → Understanding a Bug*
-(rendered at `https://bugzilla.readthedocs.io/en/latest/using/understanding.html`,
-generated from `docs/en/rst/using/understanding.rst` in the
-[`bugzilla/bugzilla`](https://github.com/bugzilla/bugzilla/blob/5.2/docs/en/rst/using/understanding.rst)
-docs source that also feeds the Harmony docs):
+Source: Bugzilla documentation, *2.3. Understanding a Bug*, rendered at
+`https://bugzilla.readthedocs.io/en/latest/using/understanding.html` and
+generated from
+[`docs/en/rst/using/understanding.rst`](https://github.com/bugzilla/harmony/blob/main/docs/en/rst/using/understanding.rst)
+in [`bugzilla/harmony`](https://github.com/bugzilla/harmony) (github.com).
+Quoted from that `.rst` source.
 
-> "The Severity field indicates how severe the problem is — from blocker
-> ('application unusable') to trivial ('minor cosmetic issue'). You can
-> also use this field to indicate whether a bug is an enhancement request."
+Under *Importance (Priority and Severity):*
 
-> "Depends On ... this bug cannot be fixed unless other bugs are fixed ...
-> Blocks ... this bug stops other bugs being fixed."
+> "The Severity field indicates how severe the problem is—from blocker
+> ("application unusable") to trivial ("minor cosmetic issue"). You
+> can also use this field to indicate whether a bug is an enhancement
+> request."
+
+Under *Dependencies (Depends On and Blocks):*
+
+> "If this bug cannot be fixed unless other bugs are fixed (depends
+> on), or this bug stops other bugs being fixed (blocks), their
+> numbers are recorded here."
+
+Note that the source states this as a single sentence defining both
+directions of one relationship, with "depends on" and "blocks" as
+parenthetical labels — not as two separate field definitions.
 
 Severity is a single-bug field; Depends On/Blocks is a relationship between
 two bugs. They're independent — don't infer one from the other.
