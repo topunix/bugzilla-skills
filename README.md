@@ -81,10 +81,6 @@ omitted rather than guessed. Where Harmony's actual code has diverged from
 older/general Bugzilla folklore (e.g. tabs vs. spaces), the skill follows
 what the current public source tree actually enforces, not the folklore.
 
-## Status
-
-Early. Skills are added as they are validated against the public codebase.
-
 ## License
 
 See LICENSE.
